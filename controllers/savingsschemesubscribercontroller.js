@@ -57,37 +57,81 @@ exports.createSavingsSchemeSubscriber = async (req, res) => {
 
 
 
+// original one
+// exports.getSchemeDetails = async (req, res) => {
+//   const { userId: id } = req.params;
+
+//   try {
+//     console.log("Fetching subscribers for user ID:", id);
+
+//     // Fetch all subscribers for the user
+//     const subscriber = await SavingsSchemeSubscriber.findById(id)
+//     .populate("user", "name email")
+//     .populate("address")
+//     .populate("scheme", "name duration status");
+  
+//   if (!subscriber) {
+//     return res.status(404).json({ message: "Subscriber not found" });
+//   }
+  
+//   // Process `subscriber` as an object, not an array
+//   const schemeDetails = {
+//     subscriberId: subscriber._id,
+//     user: subscriber.user,
+//     address: subscriber.address,
+//     schemeDetails: {
+//       schemeName: subscriber.scheme ? subscriber.scheme.name : "N/A",
+//       duration: subscriber.scheme ? subscriber.scheme.duration : "N/A",
+//       status: subscriber.scheme ? subscriber.scheme?.status : "N/A",      
+//       amount: subscriber.amount,
+//       subscribedDate: formatDate(subscriber.subscribedDate),
+//       nextDueDate: formatDate(calculateNextDueDate(subscriber.subscribedDate)),
+//     },
+//   };
+
+//     res.status(200).json({
+//       message: "Subscribers fetched successfully",
+//       subscribers: schemeDetails,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching scheme details:", error);
+//     res.status(500).json({
+//       message: "Failed to fetch scheme details",
+//       error: error.message,
+//     });
+//   }
+// };
 
 exports.getSchemeDetails = async (req, res) => {
-  const { userId: id } = req.params;
+  const { userId } = req.params; // Extract userId from request parameters
 
   try {
-    console.log("Fetching subscribers for user ID:", id);
+    console.log("Fetching subscribers for user ID:", userId);
 
-    // Fetch all subscribers for the user
-    const subscriber = await SavingsSchemeSubscriber.findById(id)
-    .populate("user", "name email")
-    .populate("address")
-    .populate("scheme", "name duration status");
-  
-  if (!subscriber) {
-    return res.status(404).json({ message: "Subscriber not found" });
-  }
-  
-  // Process `subscriber` as an object, not an array
-  const schemeDetails = {
-    subscriberId: subscriber._id,
-    user: subscriber.user,
-    address: subscriber.address,
-    schemeDetails: {
-      schemeName: subscriber.scheme ? subscriber.scheme.name : "N/A",
-      duration: subscriber.scheme ? subscriber.scheme.duration : "N/A",
-      status: subscriber.scheme ? subscriber.scheme?.status : "N/A",      
-      amount: subscriber.amount,
-      subscribedDate: formatDate(subscriber.subscribedDate),
-      nextDueDate: formatDate(calculateNextDueDate(subscriber.subscribedDate)),
-    },
-  };
+    // Find all subscriptions for the given user ID
+    const subscriptions = await SavingsSchemeSubscriber.find({ user: userId })
+      .populate("user", "name email") // Populate user details
+      .populate("address") // Populate address details
+      .populate("scheme", "name duration status"); // Populate scheme details
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return res.status(404).json({ message: "No subscriptions found for this user" });
+    }
+
+    // Map through subscriptions to format the details
+    const schemeDetails = subscriptions.map((subscriber) => ({
+      subscriberId: subscriber._id,
+      user: subscriber.user,
+      address: subscriber.address,
+      schemeDetails: {
+        schemeName: subscriber.scheme?.name || "N/A",
+        duration: subscriber.scheme?.duration || "N/A",
+        status: subscriber.scheme?.status || "N/A",
+        amount: subscriber.amount,
+        subscribedDate: formatDate(subscriber.subscribedDate),
+        nextDueDate: formatDate(calculateNextDueDate(subscriber.subscribedDate)),
+      },
+    }));
 
     res.status(200).json({
       message: "Subscribers fetched successfully",
@@ -101,6 +145,7 @@ exports.getSchemeDetails = async (req, res) => {
     });
   }
 };
+
 
 // In your savingsSchemeController.js
 exports.getPendingKyc = async (req, res) => {
